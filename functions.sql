@@ -50,3 +50,11 @@ select abs(-10)
 
 -- DateTime functions
 -----------------------------------
+
+-- NULL functions
+
+-- ISNULL(column, replacement_for_NULL) -> replaces null values
+
+-- COALESCE(val1,cal2,val3 ....) -> returns first non null value form list 
+
+select * from customers;
