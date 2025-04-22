@@ -184,7 +184,111 @@ round(avg(score) over(),2) as avg,
 round(avg(coalesce(score,0)) over(),2) as avg_withoutnull
 from customers;
 
--- find all orders where sales are hi
+-- find all orders where sales are higher than avg
+-- my query
+select * from 
+(
+    select orderid,orderdate,productid,sales,
+    round(avg(sales) over (),2) as avg
+    from orders
+)
+where sales>avg
+
+-- effecient query
+select orderid,orderdate,productid,sales
+from orders
+where sales > (select avg(sales) from orders)
+
+--///////////////////////////////////////////////////////////////////////////
+
+-- MIN/MAX ->
+-- MIN(SALES) OVER (PARTITION BY COL_NAME) -> returns min of all non null entries in that table
+
+-- # find lowest sales by product
+select orderid,productid,sales,
+min(sales) over (partition by productid) as mini
+from orders
+
+-- # find highest sales by product
+select orderid,productid,sales,
+max(sales) over (partition by productid) as maxi
+from orders
+
+-- # find highest and lowest sales by product
+select orderid,productid,sales,
+max(sales) over (partition by productid) as maxi,
+min(sales) over (partition by productid) as mini
+from orders
+
+-- # find emp with highest salaries
+select * from employees
+where salary=(select max(salary) from employees)
+
+-- # find deviation of sales amt from max and min
+select * from 
+(
+    select orderid,sales,
+    max(sales) over (),
+    min(sales) over (),
+    sales-min(sales) over () as devn_min,
+    (max(sales) over ())-sales as devn_max
+    from orders
+)
+
+-- # find the moving average of sales for each product over time
+select orderid,productid,sales,
+round(avg(sales) over (partition by productid),2) as avg,
+round(avg(sales) over (partition by productid order by orderdate),2) as moving_avg
+from orders
+
+select orderid,productid,sales,
+round(avg(sales) over (partition by productid),2) as avg,
+round(avg(sales) over (partition by productid order by orderdate rows between current row and 1 following),2) as moving_avg
+from orders
+
+
+--///////////////////////////////////////////////////////////////////////////
+
+
+--  Ranking WINDOW FUNCTIONS-
+--///////////////////////////////////////////////////////////////////////////
+-- rank functions
+
+-- row_number() -> assign a row number to every tuple, cannot handle ties, leaves no gaps in numbering
+-- row_number() over (order by sales desc)
+
+-- # rank every order by sales amount
+select orderid,productid,sales,
+row_number() over(order by sales desc) as sales_rank
+from orders
+
+-- rank() -> assigns rank to every row, can handle ties , leaves gaps in ranking
+-- rank() over (order by sales desc)
+
+-- # rank every order by sales amount
+select orderid,productid,sales,
+rank() over(order by sales desc) as sales_rank
+from orders
+
+
+-- dense_rank() -> same as rank leaves no gaps in ranking
+-- dense_rank() over (order by sales desc)
+
+-- # rank every order by sales amount
+select orderid,productid,sales,
+dense_rank() over(order by sales desc) as sales_rank
+from orders
+
+-- # rank every order by sales amount
+select orderid,productid,sales,
+row_number() over(order by sales desc) as sales_row_num,
+rank() over(order by sales desc) as sales_rank,
+dense_rank() over(order by sales desc) as sales_rank_dense
+from orders
+
+
+-- # select the top highest sales for each product
+
 
 --///////////////////////////////////////////////////////////////////////////
 
