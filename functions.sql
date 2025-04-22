@@ -198,6 +198,14 @@ from customers c
 left join orders o on c.customerid = o.customerid
 group by c.customerid, c.firstname, c.lastname
 
+
+-- second solution
+select c.customerid,c.firstname,c.lastname,coalesce(d.sum,0) as sum from customers c
+left join
+(select customerid, sum(case when (sales>30) then 1 else 0 end) as sum from orders group by customerid ) d
+on c.customerid = d.customerid;
+
+
 --# tot no of customers
 select count(*) from customers
 
