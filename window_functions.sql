@@ -250,7 +250,7 @@ from orders
 --///////////////////////////////////////////////////////////////////////////
 
 
---  Ranking WINDOW FUNCTIONS-
+--  Ranking WINDOW FUNCTIONS- Used for Top N and bottom N analyses
 --///////////////////////////////////////////////////////////////////////////
 -- rank functions
 
@@ -288,6 +288,115 @@ from orders
 
 
 -- # select the top highest sales for each product
+select * from
+(select orderid,productid,sales,
+row_number() over(partition by productid order by sales desc) rankbyproduct
+from orders)
+where rankbyproduct=1;
+
+
+
+--select lowest 2 customers based on total sales
+
+select * from (
+select customerid,sum(sales),
+row_number() over(order by sum(sales)) as rank
+from orders
+group by customerid)
+where rank<3
+
+-- identify duplicate rows in ordersarchive and return cleaned data
+select * from
+(select *,
+row_number() over(partition by orderid order by creationtime desc) as rank
+from ordersarchive) where rank=1
+
+--///////////////////////////////////////////////////////////////////////////
+-- ntile -> group buckets into buckets
+-- ntile(2) over (order by sales desc)
+
+select orderid,sales,
+ntile(4) over (order by sales desc) as nt4,
+ntile(3) over (order by sales desc) as nt3,
+ntile(2) over (order by sales desc) as nt2,
+ntile(1) over (order by sales desc) as nt1
+from orders
+
+-- # segment all orders into 3 categories-> high/med/lowest
+
+select orderid,sales,
+case rank
+when 1 then 'high'
+when 2 then 'mid'
+else 'low'
+end as category
+from
+(select orderid,sales,
+ntile(3) over(order by sales desc) as rank
+from orders)
+
+-- # divide orders into 2 groups
+
+select *,
+ntile(2) over(order by orderid) as ntile
+from orders;
+
+-- find products that fall within the highest 40% of the prices
+select * from
+(select *,
+percent_rank() over (order by price desc)
+from products)
+where percent_rank <= 0.4
+
+--///////////////////////////////////////////////////////////////////////////
+--  Value WINDOW FUNCTIONS-> access a value from other row --///////////////////////////////////////////////////////////////////////////
+
+-- value functions
+-- lead() -> access a value from next row within a window
+-- lag() -> access a value from prev row within a window
+
+-- lead(Sales,2,10) over (partition by ProductID order by orderdate)
+-- the above exp means give 2nd from row after current in window, or return 10 in case of null
+
+-- lead(Sales) over (order by month)
+-- lag(Sales) over (order by month)
+
+-- find Month over Month performance by finding the percentage change in sales
+-- in percentage change in sales b/w current and prev months
+
+select ordermonth,curr_sales,
+lag(curr_sales) over(order by ordermonth) as prev_sales,
+round((cast(curr_sales - lag(curr_sales) over(order by ordermonth) as double precision)/curr_sales)*100,2) as diff
+from
+(select 
+extract(month from orderdate) as ordermonth,
+sum(sales) as curr_sales
+from orders group by ordermonth)
+
+-- # find loyalty of customers by avg days b/w their orders
+-- rank customers on basis of their loyalty
+
+select customerid,round(avg(days_gap),2),
+rank() over(order by avg(days_gap)) from
+(select customerid,orderdate,
+lead(orderdate) over(partition by customerid order by orderdate) as next_orderdate,
+lead(orderdate) over(partition by customerid order by orderdate) - orderdate as days_gap
+from orders)
+group by customerid order by avg(days_gap)
+
+-- # show the no of days gaps b/w current order and next order for every order
+
+(select customerid,orderdate,
+lead(orderdate) over(partition by customerid order by orderdate) as next_orderdate,
+lead(orderdate) over(partition by customerid order by orderdate) - orderdate as days_gap
+from orders)
+
+-- find highest and lowest sales for each product
+
+select orderid,productid,sales,
+first_value(sales) over(partition by productid order by sales desc),
+last_value(sales) over(partition by productid order by sales desc rows between current row and unbounded following)
+from orders;
 
 
 --///////////////////////////////////////////////////////////////////////////
